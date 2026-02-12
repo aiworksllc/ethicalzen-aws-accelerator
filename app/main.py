@@ -7,6 +7,8 @@ Endpoints:
   POST /chat        — Send a prompt in 'direct' or 'mode-a' routing
   GET  /health      — Health check
   GET  /demo-prompts — Return built-in demo prompts for testing
+  GET  /grc/oscal   — Fetch OSCAL 1.1.2 Assessment Results (violations)
+  GET  /grc/stix    — Fetch STIX 2.1 Bundle (threat intel)
 """
 
 from __future__ import annotations
@@ -17,8 +19,11 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 
+from fastapi.responses import JSONResponse
+
 from app.bedrock_client import invoke_bedrock_direct
 from app.ethicalzen_proxy_client import invoke_via_proxy
+from app.grc_client import fetch_oscal_events, fetch_stix_events
 from app.logging_utils import log_event, setup_logging
 from app.models import ChatMode, ChatRequest, ChatResponse
 
@@ -128,6 +133,38 @@ async def chat(request: ChatRequest) -> ChatResponse:
     )
 
     return response
+
+
+# -- GRC / OSCAL endpoints -----------------------------------------------------
+
+
+@app.get("/grc/oscal")
+async def grc_oscal(
+    start_time: str | None = None,
+    end_time: str | None = None,
+    framework: str | None = None,
+) -> JSONResponse:
+    """Fetch OSCAL 1.1.2 Assessment Results — guardrail violations as NIST OSCAL."""
+    try:
+        result = await fetch_oscal_events(start_time, end_time, framework)
+        return JSONResponse(content=result)
+    except Exception as exc:
+        logger.exception("OSCAL fetch failed")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.get("/grc/stix")
+async def grc_stix(
+    start_time: str | None = None,
+    end_time: str | None = None,
+) -> JSONResponse:
+    """Fetch STIX 2.1 Bundle — guardrail violations as threat intelligence."""
+    try:
+        result = await fetch_stix_events(start_time, end_time)
+        return JSONResponse(content=result)
+    except Exception as exc:
+        logger.exception("STIX fetch failed")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 if __name__ == "__main__":
