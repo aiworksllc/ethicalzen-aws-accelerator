@@ -20,7 +20,7 @@ import sys
 
 import httpx
 
-BASE_URL = "http://localhost:8000"
+DEFAULT_BASE_URL = "http://localhost:8000"
 
 DEMO_PROMPTS = [
     {
@@ -46,11 +46,11 @@ DEMO_PROMPTS = [
 ]
 
 
-def run_test(prompt: dict, mode: str) -> dict:
+def run_test(prompt: dict, mode: str, base_url: str) -> dict:
     """Send a single test prompt and return the result."""
     payload = {"message": prompt["message"], "mode": mode}
     try:
-        resp = httpx.post(f"{BASE_URL}/chat", json=payload, timeout=30.0)
+        resp = httpx.post(f"{base_url}/chat", json=payload, timeout=30.0)
         return resp.json()
     except httpx.ConnectError:
         return {"error": "Could not connect — is the server running on port 8000?"}
@@ -89,12 +89,10 @@ def main() -> None:
         default="both",
         help="Which mode(s) to test (default: both)",
     )
-    parser.add_argument("--base-url", default=BASE_URL, help="Server base URL")
+    parser.add_argument("--base-url", default=DEFAULT_BASE_URL, help="Server base URL")
     args = parser.parse_args()
 
-    global BASE_URL
-    BASE_URL = args.base_url
-
+    base_url = args.base_url
     modes = ["direct", "mode-a"] if args.mode == "both" else [args.mode]
 
     print("\n" + "#" * 70)
@@ -104,7 +102,7 @@ def main() -> None:
     for mode in modes:
         print(f"\n>>> Testing mode: {mode.upper()}")
         for prompt in DEMO_PROMPTS:
-            result = run_test(prompt, mode)
+            result = run_test(prompt, mode, base_url)
             print_result(prompt["name"], mode, prompt["expected"], result)
 
     print(f"\n{'#'*70}")
