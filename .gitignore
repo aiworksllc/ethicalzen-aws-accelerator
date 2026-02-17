@@ -10,6 +10,9 @@
 .idea/
 .vscode/
 
+# Claude Code config
+CLAUDE.md
+
 # Python
 __pycache__/
 *.pyc
